@@ -12,9 +12,14 @@
   --text-dark-muted: #9B9CA3;
   --text-light: #14151A;
   --text-light-muted: #62636B;
-  --gold: #C9A227;
-  --gold-soft: #E7CD7A;
-  --gold-ink: #2B2205;
+
+  /* -- Ninja-anime palette (was gold/muted) -- */
+  --gold: #FF7A18;
+  --gold-soft: #FFB25E;
+  --gold-ink: #2B1205;
+  --chakra-blue: #35C6FF;
+  --sharingan-red: #E4291B;
+  --leaf-green: #4CA85A;
 
   --display: 'Fraunces', Georgia, serif;
   --body: 'Inter', system-ui, sans-serif;
@@ -258,16 +263,57 @@ a{color:inherit;}
 
 .avatar-center{
   position:relative; z-index:3;
-  width:130px; height:130px; border-radius:50%;
+  width:150px; height:150px; border-radius:50%;
   background:linear-gradient(150deg, #1c1d22, #0c0d10);
-  border:1px solid rgba(201,162,39,0.4);
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 20px 40px -16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  overflow:visible;
 }
 .avatar-center span{
   font-family:var(--display); font-weight:700; font-size:2.1rem;
   background:linear-gradient(135deg, var(--gold-soft), var(--gold));
   -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+/* Photo avatar with spinning chakra ring + headband plate */
+.avatar-photo-wrap{
+  position:relative; width:100%; height:100%; border-radius:50%;
+}
+.avatar-photo-wrap::before{
+  content:""; position:absolute; inset:-9px; border-radius:50%; z-index:0;
+  background:conic-gradient(from 0deg, var(--gold), var(--sharingan-red), var(--chakra-blue), var(--gold-soft), var(--gold));
+  animation:chakraSpin 6s linear infinite;
+  filter:blur(0.4px);
+}
+.avatar-photo-wrap::after{
+  content:""; position:absolute; inset:-3px; border-radius:50%; z-index:1;
+  background:var(--ink); 
+}
+.avatar-photo{
+  position:relative; z-index:2; width:100%; height:100%; border-radius:50%;
+  object-fit:cover; display:block; border:2px solid var(--ink-soft);
+  filter:saturate(1.12) contrast(1.05);
+}
+.avatar-headband{
+  position:absolute; z-index:4; left:50%; bottom:14%; transform:translateX(-50%) rotate(-3deg);
+  width:78%; height:24px; background:linear-gradient(180deg,#1b1c20,#0c0d10);
+  border-top:2px solid rgba(255,255,255,0.12); border-bottom:2px solid rgba(0,0,0,0.4);
+  box-shadow:0 6px 16px -6px rgba(0,0,0,0.6);
+}
+.avatar-headband .plate{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:34px; height:20px; border-radius:3px;
+  background:linear-gradient(160deg,#c7ccd4,#82868f);
+  border:1px solid rgba(0,0,0,0.35);
+  display:flex; align-items:center; justify-content:center;
+}
+.avatar-headband .plate::before{
+  content:""; width:14px; height:14px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #4a4e57, #1a1b1e 70%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+@keyframes chakraSpin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){
+  .avatar-photo-wrap::before{ animation:none; }
 }
 
 .orbit-ring{ position:absolute; inset:0; border-radius:50%; }
