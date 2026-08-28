@@ -1,0 +1,259 @@
+/* ==================================================================
+   NARUTO / NINJA ANIME FX LAYER
+   Original decorative artwork inspired by shonen-ninja aesthetics —
+   no copyrighted logos, character art, or trademarked emblems used.
+================================================================== */
+
+/* ---------- global leaf-storm canvas (whole site, behind content) --- */
+#leafCanvas{
+  position:fixed; inset:0; width:100vw; height:100vh;
+  pointer-events:none; z-index:1; opacity:0.9; mix-blend-mode:normal;
+}
+body{ position:relative; }
+.nav, main, .site-footer{ position:relative; z-index:2; }
+
+/* ---------- chakra cursor spark trail ---------- */
+.chakra-spark{
+  position:fixed; z-index:999; width:7px; height:7px; border-radius:50%;
+  background:radial-gradient(circle, #fff, var(--gold) 55%, transparent 75%);
+  pointer-events:none; will-change:transform, opacity;
+  animation:sparkFade .7s ease-out forwards;
+}
+@keyframes sparkFade{
+  0%{ opacity:0.9; transform:scale(1); }
+  100%{ opacity:0; transform:scale(0.2) translateY(-14px); }
+}
+@media (hover: none){ .chakra-spark{ display:none; } }
+
+/* ---------- hero chakra swirl backdrop ---------- */
+.hero-chakra-bg{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(255,122,24,0.30), transparent 42%),
+    radial-gradient(circle at 12% 82%, rgba(53,198,255,0.20), transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(228,41,27,0.10), transparent 60%);
+  animation:chakraDrift 14s ease-in-out infinite alternate;
+}
+@keyframes chakraDrift{
+  0%{ background-position:0 0, 0 0, 0 0; filter:hue-rotate(0deg); }
+  100%{ background-position:30px -20px, -20px 30px, 10px -10px; filter:hue-rotate(8deg); }
+}
+
+/* rasengan-style spinning orb loader, replaces plain dots */
+.hero-3d-loading{ gap:0 !important; }
+.rasengan{
+  position:relative; width:46px; height:46px;
+}
+.rasengan::before, .rasengan::after{
+  content:""; position:absolute; inset:0; border-radius:50%;
+  border:3px solid transparent;
+  border-top-color:var(--chakra-blue); border-right-color:#fff;
+  animation:rasenganSpin 0.9s linear infinite;
+}
+.rasengan::after{
+  inset:9px; border-top-color:var(--gold); border-right-color:transparent;
+  border-left-color:var(--sharingan-red);
+  animation-duration:0.6s; animation-direction:reverse;
+}
+@keyframes rasenganSpin{ to{ transform:rotate(360deg);} }
+
+/* floating kunai + shuriken decorations inside hero */
+.hero-weapons{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+.fx-kunai, .fx-shuriken{ position:absolute; opacity:0.85; filter:drop-shadow(0 6px 10px rgba(0,0,0,0.5)); }
+.fx-kunai{ width:46px; animation:kunaiFloat 7s ease-in-out infinite; }
+.fx-shuriken{ width:40px; animation:shurikenSpinFloat 5.5s linear infinite; }
+.fx-kunai.k1{ top:16%; left:8%; animation-delay:0s; }
+.fx-kunai.k2{ top:62%; left:88%; animation-delay:1.2s; transform:scaleX(-1); }
+.fx-kunai.k3{ top:78%; left:6%; animation-delay:2.4s; width:34px;}
+.fx-shuriken.s1{ top:24%; left:86%; animation-delay:0.3s; }
+.fx-shuriken.s2{ top:52%; left:4%; animation-delay:1.6s; width:30px;}
+.fx-shuriken.s3{ top:10%; left:48%; animation-delay:2.6s; width:26px; opacity:0.6;}
+@keyframes kunaiFloat{
+  0%,100%{ transform:translateY(0) rotate(-18deg); }
+  50%{ transform:translateY(-22px) rotate(-8deg); }
+}
+@keyframes shurikenSpinFloat{
+  0%{ transform:translateY(0) rotate(0deg); }
+  50%{ transform:translateY(-16px) rotate(180deg); }
+  100%{ transform:translateY(0) rotate(360deg); }
+}
+@media (max-width: 760px){
+  .fx-kunai, .fx-shuriken{ opacity:0.5; transform:scale(0.7); }
+}
+
+/* ---------- section divider: spinning shuriken seam between sections ---------- */
+.jutsu-divider{
+  position:relative; height:64px; display:flex; align-items:center; justify-content:center;
+  background:inherit;
+}
+.jutsu-divider::before, .jutsu-divider::after{
+  content:""; position:absolute; top:50%; width:42%; height:1px;
+  background:linear-gradient(90deg, transparent, rgba(255,122,24,0.5), transparent);
+}
+.jutsu-divider::before{ left:0; }
+.jutsu-divider::after{ right:0; }
+.jutsu-divider svg{
+  width:30px; height:30px; animation:shurikenSpinFloat 3.6s linear infinite;
+  filter:drop-shadow(0 0 6px rgba(255,122,24,0.55));
+}
+
+/* ---------- section-title ink-slash accent ---------- */
+.section-title{ position:relative; display:inline-block; }
+.section-title::after{
+  content:""; position:absolute; left:0; bottom:-8px; height:4px; width:0;
+  background:linear-gradient(90deg, var(--sharingan-red), var(--gold));
+  border-radius:2px; transition:width .7s var(--ease) .1s;
+}
+.reveal.is-visible .section-title::after,
+.section.is-visible .section-title::after{ width:64px; }
+
+/* jutsu-seal ping on hover for tags / skill chips / cards */
+.tag.hover-glass, .fact-card.hover-glass, .project-card.hover-glass, .connect-card.hover-glass{
+  position:relative; overflow:hidden;
+}
+.tag.hover-glass::after, .project-card.hover-glass::after, .connect-card.hover-glass::after{
+  content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(255,122,24,0.35), transparent 55%);
+  opacity:0; transition:opacity .35s ease;
+}
+.tag.hover-glass:hover::after, .project-card.hover-glass:hover::after, .connect-card.hover-glass:hover::after{ opacity:1; }
+
+/* scroll-cue reskinned as a falling kunai */
+.scroll-cue{ border-color:transparent !important; }
+.scroll-cue::before{
+  content:"⟱"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:22px; color:var(--gold); animation:cueDrop 1.6s ease-in-out infinite;
+}
+.scroll-cue span{ display:none; }
+@keyframes cueDrop{ 0%{ transform:translateY(-4px); opacity:0.4;} 50%{ transform:translateY(6px); opacity:1;} 100%{ transform:translateY(-4px); opacity:0.4;} }
+
+/* nav logo mark glow (headband plate) */
+.logo-mark{
+  box-shadow:0 0 0 2px rgba(255,122,24,0.35), 0 0 14px rgba(255,122,24,0.35);
+}
+
+/* button hover: kunai-slash shimmer */
+.btn-accent{ position:relative; overflow:hidden; }
+.btn-accent::before{
+  content:""; position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background:linear-gradient(115deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform:skewX(-20deg);
+  transition:left .6s ease;
+}
+.btn-accent:hover::before{ left:130%; }
+
+@media (prefers-reduced-motion: reduce){
+  .hero-chakra-bg, .fx-kunai, .fx-shuriken, .jutsu-divider svg, .scroll-cue::before, .rasengan::before, .rasengan::after{
+    animation:none !important;
+  }
+}
+
+/* ==================================================================
+   INTRO SPLASH — headband slash reveal on page load
+================================================================== */
+#ninjaSplash{
+  position:fixed; inset:0; z-index:9999; background:#0A0A0C;
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  gap:18px;
+  transition:opacity .6s ease, visibility .6s ease;
+}
+#ninjaSplash.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+.splash-plate{
+  position:relative; width:min(60vw, 260px); height:64px;
+  background:linear-gradient(180deg,#20222a,#0c0d10);
+  border:2px solid rgba(255,178,94,0.35);
+  border-radius:6px; overflow:hidden;
+  box-shadow:0 0 40px rgba(255,122,24,0.25);
+}
+.splash-plate::before{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+  transform:translateX(-120%) skewX(-20deg);
+  animation:splashSlash 1.6s ease-in-out 0.3s 1;
+}
+.splash-plate::after{
+  content:""; position:absolute; left:6%; right:6%; top:50%; height:3px;
+  background:linear-gradient(90deg, var(--sharingan-red), var(--gold));
+  transform:translateY(-50%) scaleX(0); transform-origin:left center;
+  animation:splashScratch 0.5s ease-out 1.1s forwards;
+  box-shadow:0 0 10px rgba(228,41,27,0.7);
+}
+.splash-label{
+  font-family:var(--mono); letter-spacing:0.25em; text-transform:uppercase;
+  font-size:0.8rem; color:var(--gold-soft); opacity:0.85;
+  animation:splashPulse 1.1s ease-in-out infinite;
+}
+@keyframes splashSlash{ to{ transform:translateX(120%) skewX(-20deg); } }
+@keyframes splashScratch{ to{ transform:translateY(-50%) scaleX(1); } }
+@keyframes splashPulse{ 0%,100%{opacity:0.4;} 50%{opacity:1;} }
+
+/* ==================================================================
+   Giant rotating spiral watermark (uzumaki-style, original artwork)
+================================================================== */
+.spiral-watermark{
+  position:absolute; z-index:0; pointer-events:none; opacity:0.08;
+  width:900px; height:900px; right:-260px; top:-220px;
+  animation:spiralTurn 90s linear infinite;
+}
+@keyframes spiralTurn{ to{ transform:rotate(360deg);} }
+@media (max-width: 760px){ .spiral-watermark{ width:520px; height:520px; right:-200px; top:-140px; } }
+
+/* ==================================================================
+   Chakra Mode toggle — flips the whole site into an intense red/orange
+   "tailed-beast" chakra skin
+================================================================== */
+#chakraToggle{
+  position:fixed; right:20px; bottom:20px; z-index:500;
+  display:flex; align-items:center; gap:8px;
+  padding:11px 16px; border-radius:999px; border:1px solid rgba(255,122,24,0.4);
+  background:rgba(10,10,12,0.85); backdrop-filter:blur(8px);
+  color:#fff; font-family:var(--mono); font-size:0.78rem; letter-spacing:0.03em;
+  cursor:pointer; box-shadow:0 10px 24px -10px rgba(0,0,0,0.6);
+  transition:transform .25s var(--ease), box-shadow .25s var(--ease), border-color .25s ease;
+}
+#chakraToggle:hover{ transform:translateY(-2px); box-shadow:0 14px 30px -10px rgba(255,122,24,0.45); }
+#chakraToggle .dot{
+  width:9px; height:9px; border-radius:50%; background:var(--gold);
+  box-shadow:0 0 10px var(--gold); animation:pulseGlow 2.4s ease-in-out infinite;
+}
+#chakraToggle.active{ border-color:var(--sharingan-red); }
+#chakraToggle.active .dot{ background:var(--sharingan-red); box-shadow:0 0 12px var(--sharingan-red); }
+
+body.chakra-mode{
+  animation:chakraBodyPulse 2.4s ease-in-out infinite;
+}
+body.chakra-mode::before{
+  content:""; position:fixed; inset:0; z-index:998; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, transparent 45%, rgba(228,41,27,0.22) 100%);
+  animation:vignettePulse 2.4s ease-in-out infinite;
+}
+body.chakra-mode .hero-chakra-bg{
+  background:
+    radial-gradient(circle at 78% 18%, rgba(228,41,27,0.42), transparent 45%),
+    radial-gradient(circle at 12% 82%, rgba(255,122,24,0.34), transparent 48%),
+    radial-gradient(circle at 50% 50%, rgba(228,41,27,0.22), transparent 60%);
+  animation-duration:3.2s;
+}
+body.chakra-mode .avatar-photo-wrap::before{ animation-duration:1.6s; }
+body.chakra-mode .nav{ border-bottom-color:rgba(228,41,27,0.35); }
+@keyframes chakraBodyPulse{ 0%,100%{ filter:saturate(1);} 50%{ filter:saturate(1.18);} }
+@keyframes vignettePulse{ 0%,100%{ opacity:0.6;} 50%{ opacity:1;} }
+
+/* ==================================================================
+   Skill tags -> chakra power-bar fill on hover
+================================================================== */
+.skill-values .tag{ position:relative; }
+.skill-values .tag::before{
+  content:""; position:absolute; left:0; bottom:0; height:2px; width:0%;
+  background:linear-gradient(90deg, var(--gold), var(--sharingan-red));
+  transition:width .5s var(--ease);
+}
+.skill-values .tag:hover::before{ width:100%; }
+
+@media (prefers-reduced-motion: reduce){
+  #ninjaSplash{ display:none; }
+  .spiral-watermark{ animation:none; }
+  body.chakra-mode{ animation:none; }
+  body.chakra-mode::before{ animation:none; opacity:0.35; }
+}
+
