@@ -38,8 +38,8 @@ function init(){
     woodDark: 0x241a14,
     metal: 0x8b8d94,
     fabric: 0x1c1e24,
-    screenGlow: 0xe7cd7a,
-    gold: 0xc9a227,
+    screenGlow: 0xffb25e,
+    gold: 0xff7a18,
     plant: 0x3f6b4a,
     pot: 0x545860,
   };
@@ -182,7 +182,7 @@ function init(){
 
   const lapGlow = new THREE.Mesh(
     new THREE.PlaneGeometry(0.52, 0.32),
-    new THREE.MeshStandardMaterial({ color: 0x0d0e12, emissive: 0xcaa54a, emissiveIntensity: 0.35, roughness: 0.4 })
+    new THREE.MeshStandardMaterial({ color: 0x0d0e12, emissive: 0xff9a3c, emissiveIntensity: 0.35, roughness: 0.4 })
   );
   lapGlow.position.set(0, 0.2, 0.011);
   lapGlow.rotation.x = -0.32;
@@ -411,12 +411,12 @@ function makeCodeCanvas(){
     let y = 34;
     const shuffled = linesPool.slice(Math.floor(Math.random() * 3));
     shuffled.slice(0, 9).forEach((line, i) => {
-      ctx.fillStyle = i % 3 === 0 ? '#e7cd7a' : '#9fe2c6';
+      ctx.fillStyle = i % 3 === 0 ? '#ffb25e' : '#9fe2c6';
       ctx.fillText(line, 18, y);
       y += 28;
     });
     // blinking cursor block
-    ctx.fillStyle = '#e7cd7a';
+    ctx.fillStyle = '#ffb25e';
     ctx.fillRect(18, y - 20, 10, 20);
   }
 
