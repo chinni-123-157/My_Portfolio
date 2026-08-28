@@ -23,6 +23,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@2.15.1/devicon.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/naruto-fx.css') }}">
 
 <script type="importmap">
 {
@@ -128,10 +129,13 @@
           </div>
           <div class="orbit-ring orbit-ring-2"></div>
           <div class="avatar-center">
-            <span>{{ r.initials }}</span>
+            <div class="avatar-photo-wrap">
+              <img class="avatar-photo" src="{{ url_for('static', filename='assets/profile.jpg') }}" alt="{{ r.name }}">
+              <div class="avatar-headband" aria-hidden="true"><span class="plate"></span></div>
+            </div>
           </div>
         </div>
-        <p class="orbit-caption">{{ r.tagline }}</p>
+        <p class="orbit-caption">{{ r.tagline }} <span class="ninja-rank">— Rank: Portfolio Shinobi</span></p>
       </div>
 
       <div>
@@ -380,5 +384,6 @@
 
 <script type="module" src="{{ url_for('static', filename='js/scene.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/naruto-fx.js') }}"></script>
 </body>
 </html>
