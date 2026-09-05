@@ -126,12 +126,4 @@ gunicorn -w 2 -b 0.0.0.0:8000 app:app
 
 Remember to turn `debug=False` (or just don't set `FLASK_DEBUG`) in production.
 
-## 8. Accessibility & performance notes
-
-- Skip link, visible focus states, semantic headings/landmarks throughout.
-- The 3D canvas is `aria-hidden` (it's decorative); all real content is in
-  normal HTML text, so screen readers get the full site regardless of WebGL.
-- Reveal animations and the 3D auto-rotate both respect
-  `prefers-reduced-motion: reduce`.
-- Renderer pixel ratio is capped at 2x and geometry is kept low-poly/primitive
-  to stay smooth on mid-range laptops and phones.
+## 8. The WebPage at https://my-portfolio-1z84.onrender.com
