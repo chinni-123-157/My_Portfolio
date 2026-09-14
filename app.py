@@ -1,329 +1,397 @@
-"""
-Elite portfolio — Flask backend.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>{{ r.name }} — {{ r.tagline }}</title>
+<meta name="description" content="{{ r.headline }} Portfolio of {{ r.name }}, {{ r.tagline }}.">
+<meta name="theme-color" content="#0A0A0C">
+<link rel="canonical" href="/">
 
-Responsibilities (intentionally minimal, no DB, no external/paid APIs, no API keys):
-  1. Render the single-page site from resume data below (source of truth).
-  2. Serve static assets (css/js/resume pdf).
-  3. Prepare the "Hire me" contact email server-side: validate the submitted
-     fields and build a mailto: URL (subject + body). The browser then opens
-     that URL in a new tab, handing off to the visitor's own email client.
-     No email is ever sent by the server — nothing is stored, nothing is mailed
-     from here.
-"""
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ r.name }} — {{ r.tagline }}">
+<meta property="og:description" content="{{ r.headline }}">
+<meta property="og:site_name" content="{{ r.name }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ r.name }} — {{ r.tagline }}">
+<meta name="twitter:description" content="{{ r.headline }}">
 
-from __future__ import annotations
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/devicons/devicon@2.15.1/devicon.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/naruto-fx.css') }}">
 
-from flask import Flask, render_template, request, jsonify
-from urllib.parse import quote
-import re
-
-app = Flask(__name__)
-
-# ---------------------------------------------------------------------------
-# Resume data — single source of truth for the whole site.
-# Edit this dict to update the site; templates/index.html just renders it.
-# ---------------------------------------------------------------------------
-
-OWNER_EMAIL = "chinnidurgavaraprasad0@gmail.com"
-OWNER_PHONE = "+91 93923 69329"
-OWNER_PHONE_DIGITS = "919392369329"  # country code + number, no symbols — used for wa.me / tel:
-
-# Skill name -> Devicon class (https://devicon.dev). Only concrete, named
-# technologies get a logo; abstract skills (e.g. "OOP", "SEO") stay plain
-# text tags. `invert` marks icons that render dark-on-transparent and need
-# a CSS filter to stay visible on the dark skills section.
-ICON_MAP = {
-    "Python": ("devicon-python-plain colored", False),
-    "Java": ("devicon-java-plain colored", False),
-    "Git": ("devicon-git-plain colored", False),
-    "GitHub": ("devicon-github-original", True),
-    "Jupyter Notebook": ("devicon-jupyter-plain colored", False),
-    "AWS": ("devicon-amazonwebservices-plain-wordmark colored", False),
-    "GCP": ("devicon-googlecloud-plain colored", False),
-    "MySQL": ("devicon-mysql-plain colored", False),
-    "PostgreSQL": ("devicon-postgresql-plain colored", False),
-    "Flask": ("devicon-flask-original", True),
-    "Django": ("devicon-django-plain colored", False),
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
 }
+</script>
 
-
-def with_icons(names: list[str]) -> list[dict]:
-    """Turn a plain list of skill names into [{name, icon, invert}, ...]."""
-    out = []
-    for n in names:
-        icon, invert = ICON_MAP.get(n, (None, False))
-        out.append({"name": n, "icon": icon, "invert": invert})
-    return out
-
-
-RESUME = {
-    "name": "Mandapaka Chinni Durga Vara Prasad",
-    "short_name": "Chinni Durga Vara Prasad",
-    "initials": "MC",
-    "tagline": "AI/ML Engineer & Data Analyst",
-    "roles": ["AI/ML Engineer", "Data Analyst", "Python Developer", "Educator"],
-    "headline": "I turn raw data into decisions worth acting on.",
-    "summary": (
-        "B.Tech AI/ML graduate (2026) with hands-on experience across agentic AI "
-        "engineering, data analysis and cross-functional project execution. "
-        "Comfortable moving between Python notebooks, SQL queries and stakeholder "
-        "conversations — proficient in Google Workspace, SQL and spreadsheet "
-        "analytics, with a strong foundation in problem-solving and quality-driven "
-        "delivery."
-    ),
-    "about_paragraphs": [
-        "I'm a B.Tech AI/ML graduate from Swarnandhra College of Engineering and "
-        "Technology (CGPA 8.67/10), currently teaching as an Assistant Professor "
-        "while preparing to join Deloitte as an Analyst Trainee.",
-        "My path so far has run through agentic AI engineering, data validation "
-        "and auditing, dashboarding, and full-stack project builds — with a "
-        "constant thread of using data to make better decisions, whether that's "
-        "forecasting footfall from satellite imagery or mining sentiment out of "
-        "YouTube comments.",
-        "I'm adaptable, self-motivated and fluent in English, and I like working "
-        "in fast-paced, collaborative environments where the goal is solving a "
-        "real business problem — not just shipping code.",
-    ],
-    "quick_facts": [
-        {"label": "Graduating", "value": "2026"},
-        {"label": "CGPA", "value": "8.67 / 10"},
-        {"label": "Based in", "value": "Andhra Pradesh, India"},
-        {"label": "Next stop", "value": "Deloitte · Analyst Trainee"},
-    ],
-    "email": OWNER_EMAIL,
-    "phone": OWNER_PHONE,
-    "phone_digits": OWNER_PHONE_DIGITS,
-    "socials": {
-        "github": "https://github.com/chinni-123-157",
-        "linkedin": "https://www.linkedin.com/in/mandapaka-chinni-durga-vara-prasad-b0510b2ba/",
-        "leetcode": "https://leetcode.com/u/__Chinni__/",
-    },
-    "orbit_icons": [
-        "fa-solid fa-file-excel",
-        "fa-solid fa-file-powerpoint",
-        "fa-solid fa-table",
-        "fa-solid fa-chart-line",
-        "fa-solid fa-database",
-        "fa-solid fa-cloud",
-        "fa-solid fa-brain",
-        "fa-brands fa-python",
-        "fa-solid fa-code-branch",
-    ],
-    "resume_pdf": "assets/resume.pdf",
-    "gmail_quick_url": (
-        "https://mail.google.com/mail/?view=cm&fs=1"
-        f"&to={quote(OWNER_EMAIL)}&su={quote('Hi Chinni — reaching out from your portfolio')}"
-    ),
-    "whatsapp_url": f"https://wa.me/{OWNER_PHONE_DIGITS}?text={quote('Hi Chinni, I found your portfolio and would like to connect.')}",
-    "experience": [
-        {
-            "date": "Expected Aug 2026",
-            "role": "Analyst Trainee",
-            "org": "Deloitte",
-            "badge": "Selected · awaiting joining",
-        },
-        {
-            "date": "Jun 2026 — Present",
-            "role": "Assistant Professor",
-            "org": "Swarnandhra College of Engineering and Technology",
-            "badge": None,
-        },
-        {
-            "date": "Aug 2025 — Nov 2025",
-            "role": "Agentic AI Engineer",
-            "org": "SkillyHeads Pvt Ltd",
-            "badge": "Paid internship",
-        },
-    ],
-    "education": [
-        {
-            "degree": "B.Tech, AIML",
-            "school": "Swarnandhra College of Engineering and Technology",
-            "date": "2022 – 2026",
-            "meta": "CGPA 8.67 / 10",
-        },
-        {
-            "degree": "Intermediate (12th), CBSE",
-            "school": "Bharatiya Vidya Bhavan's International Residential Public School",
-            "date": "2020 – 2022",
-            "meta": "77.9%",
-        },
-        {
-            "degree": "SSC (10th), CBSE",
-            "school": "J Sikile School",
-            "date": "2019 – 2020",
-            "meta": "77.6%",
-        },
-    ],
-    "skills": [
-        {"key": "languages", "entries": with_icons(["Python", "Java", "SQL"])},
-        {
-            "key": "core_cs",
-            "entries": with_icons([
-                "Data Structures", "Algorithms", "OOP", "DBMS",
-                "Operating Systems", "Computer Vision", "Machine Learning",
-            ]),
-        },
-        {
-            "key": "data_ops",
-            "entries": with_icons([
-                "SQL Querying", "Data Validation", "Data Auditing",
-                "Quality Checking", "Dashboarding",
-            ]),
-        },
-        {
-            "key": "digital_marketing",
-            "entries": with_icons(["Google Ads Fundamentals", "SEO", "Campaign Analytics", "Social Media Marketing"]),
-        },
-        {
-            "key": "tools",
-            "entries": with_icons(["Google Workspace", "Microsoft Excel", "Git", "GitHub", "Jupyter Notebook", "Google Colab"]),
-        },
-        {"key": "cloud", "entries": with_icons(["AWS", "GCP"])},
-        {"key": "databases_frameworks", "entries": with_icons(["MySQL", "PostgreSQL", "Flask", "Django"])},
-    ],
-    "projects": [
-        {
-            "index": "01",
-            "title": "Predictive Customer Flow Analysis Using Satellite Data",
-            "description": (
-                "Analyzed peak footfall and traffic patterns for local tea stalls "
-                "using satellite imagery and location data to support demand "
-                "forecasting and site-selection decisions."
-            ),
-            "tags": ["Python", "Geospatial Data", "Forecasting"],
-        },
-        {
-            "index": "02",
-            "title": "Smart Village Car Rental & Auto Booking System",
-            "description": (
-                "Booking platform with real-time driver and vehicle availability "
-                "tracking, streamlining local transport access in semi-urban and "
-                "rural areas."
-            ),
-            "tags": ["Flask / Django", "SQL", "Real-time"],
-        },
-        {
-            "index": "03",
-            "title": "YouTube Comment Insight Engine",
-            "description": (
-                "Used NLP and machine learning to classify and surface key viewer "
-                "feedback from comments, helping creators identify actionable "
-                "insights to improve content quality."
-            ),
-            "tags": ["NLP", "Machine Learning", "Python"],
-        },
-        {
-            "index": "04",
-            "title": "WorkerConnect: Service Marketplace Analytics Platform",
-            "description": (
-                "Analytics-driven marketplace connecting customers with plumbing, "
-                "cleaning and electrician service providers, featuring profiles, "
-                "reviews and real-time job-status tracking."
-            ),
-            "tags": ["Marketplace", "Analytics", "Dashboarding"],
-        },
-    ],
-    "certifications": [
-        "IBM SkillsBuild — Artificial Intelligence Fundamentals",
-        "AWS Academy — Cloud Foundations",
-        "AWS Academy — Data Engineering",
-        "Google Cloud — AI Applications",
-        "Google Cloud — Data Warehouse with BigQuery",
-        "Cisco — Data Analytics Essentials",
-        "ServiceNow Certified Implementation Specialist — Data Foundations",
-    ],
-    "achievements": [
-        "Cleared the TCS National Qualifier Test (TCS NQT) and received the TCS Ninja offer letter",
-        "Secured a Top 5 position in a National-Level Hackathon",
-        "Organized and led a hackathon with 250+ participants",
-        "Won 1st Prize in a District-Level Designing Competition",
-        "Achieved 3rd Prize in a Business Idea Competition",
-    ],
-    "leadership": [
-        "Head Boy (10th & 12th) — led student governance and coordinated 15+ institutional events with 500+ attendees",
-        "Event Coordinator — owned end-to-end planning for technical fests and workshops, including vendor coordination",
-        "NSS Volunteer — participated in social service and community development programs",
-    ],
-    "contact_roles": [
-        "Full-time Hire",
-        "Freelance Project",
-        "AI/ML",
-        "Python / Backend",
-        "Data Analytics",
-        "Collaboration",
-    ],
+<!-- Structured data for SEO -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "{{ r.name }}",
+  "jobTitle": "{{ r.tagline }}",
+  "email": "mailto:{{ r.email }}",
+  "description": "{{ r.headline }}"
 }
+</script>
+</head>
+<body class="pirate-site">
 
+<!-- Wordless nautical-compass loading sequence. The portfolio content remains available underneath. -->
+<div class="site-loader" id="siteLoader" aria-hidden="true">
+  <div class="site-loader-aura"></div>
+  <div class="site-loader-seal">
+    <span></span><span></span><span></span>
+    <i></i>
+  </div>
+</div>
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
+<a class="skip-link" href="#main">Skip to content</a>
 
-@app.route("/")
-def index():
-    return render_template("index.html", r=RESUME)
+<!-- ============================================================ NAV -->
+<header class="nav" id="siteNav">
+  <div class="nav-inner">
+    <a href="#top" class="logo">
+      <span class="logo-mark">{{ r.initials }}</span>
+      <span class="logo-text">{{ r.short_name.split(' ')[0] }}</span>
+    </a>
+    <nav class="nav-links nav-link-highlight" aria-label="Primary">
+      <a href="#about">About</a>
+      <a href="#skills">Skills</a>
+      <a href="#experience">Experience</a>
+      <a href="#projects">Projects</a>
+      <a href="#achievements">Achievements</a>
+      <a href="#connect">Connect</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a href="#contact" class="btn btn-accent nav-cta">Hire me</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#about">About</a>
+    <a href="#skills">Skills</a>
+    <a href="#experience">Experience</a>
+    <a href="#projects">Projects</a>
+    <a href="#achievements">Achievements</a>
+    <a href="#connect">Connect</a>
+    <a href="#contact">Contact</a>
+  </div>
+</header>
 
+<main id="main">
 
-@app.route("/api/prepare-contact", methods=["POST"])
-def prepare_contact():
-    """
-    Validates the contact form server-side and builds a Gmail web-compose
-    URL (opens in the browser, not a desktop mail app) plus a mailto:
-    fallback. No data is stored or emailed by the server — the client opens
-    the returned URL in a new tab; the visitor still hits send themselves.
-    """
-    data = request.get_json(silent=True) or {}
+  <!-- ============================================================ HERO -->
+  <section id="top" class="hero" aria-label="Introduction">
+    <div class="hero-3d" id="hero3d" aria-hidden="true">
+      <canvas id="scene-canvas"></canvas>
+      <div class="hero-3d-loading" id="hero3dLoading">
+        <span class="loader-dot"></span><span class="loader-dot"></span><span class="loader-dot"></span>
+      </div>
+      <p class="hero-3d-hint" id="hero3dHint">drag to orbit · scroll to zoom</p>
+    </div>
 
-    name = (data.get("name") or "").strip()
-    email = (data.get("email") or "").strip()
-    role = (data.get("role") or "").strip()
-    project = (data.get("project") or "").strip()
-    timeline = (data.get("timeline") or "").strip()
-    message = (data.get("message") or "").strip()
+    <div class="hero-scrim" aria-hidden="true"></div>
 
-    errors = {}
-    if not name:
-        errors["name"] = "Please enter your name."
-    if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
-        errors["email"] = "Please enter a valid email address."
-    if not role or role not in RESUME["contact_roles"]:
-        errors["role"] = "Please choose what this is about."
-    if not message:
-        errors["message"] = "Please add a short message."
+    <div class="hero-content">
+      <p class="eyebrow eyebrow-light">— Portfolio</p>
+      <h1 class="hero-title">{{ r.name }}</h1>
+      <p class="hero-roles" id="heroRoles">
+        {% for role in r.roles %}<span class="hero-role{{ ' is-active' if loop.first else '' }}">{{ role }}</span>{% endfor %}
+      </p>
+      <p class="hero-headline">{{ r.headline }}</p>
+      <div class="hero-actions">
+        <a href="#contact" class="btn btn-accent btn-lg" data-role-select="Freelance Project">Hire me / Start a project</a>
+        <a href="{{ url_for('static', filename='assets/resume.pdf') }}" target="_blank" rel="noopener" class="btn btn-ghost-light btn-lg">View résumé ↗</a>
+      </div>
+    </div>
 
-    if errors:
-        return jsonify({"ok": False, "errors": errors}), 400
+    <a href="#about" class="scroll-cue" aria-label="Scroll to content">
+      <span></span>
+    </a>
+  </section>
 
-    subject = f"{role}: {name} would like to connect"
+  <!-- ============================================================ ABOUT -->
+  <section id="about" class="section reveal">
+    <div class="section-inner about-grid about-grid-3">
+      <div class="orbit-col reveal">
+        <div class="orbit-avatar" aria-hidden="true">
+          <div class="orbit-glow"></div>
+          <div class="orbit-ring orbit-ring-1">
+            {% for icon in r.orbit_icons %}
+            <div class="orbit-icon" style="--i: {{ loop.index0 }}; --n: {{ r.orbit_icons|length }};">
+              <div class="orbit-icon-counter"><i class="{{ icon }}"></i></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="orbit-ring orbit-ring-2"></div>
+          <div class="avatar-center">
+            <div class="avatar-photo-wrap">
+              <img class="avatar-photo" src="{{ url_for('static', filename='assets/profile.jpg') }}" alt="{{ r.name }}">
+            </div>
+          </div>
+        </div>
+        <p class="orbit-caption">{{ r.tagline }}</p>
+      </div>
 
-    body_lines = [
-        f"Hi {RESUME['short_name']},",
-        "",
-        f"{name} is reaching out about: {role}",
-    ]
-    if project:
-        body_lines.append(f"Project / request: {project}")
-    if timeline:
-        body_lines.append(f"Timeline: {timeline}")
-    body_lines += [
-        "",
-        "Message:",
-        message,
-        "",
-        "— Sent from your portfolio contact form",
-        f"Reply-to: {email}",
-    ]
-    body = "\n".join(body_lines)
+      <div>
+        <p class="eyebrow">— About</p>
+        <h2 class="section-title">Not just code — outcomes.</h2>
+        {% for p in r.about_paragraphs %}
+        <p class="about-text">{{ p }}</p>
+        {% endfor %}
+      </div>
+      <div class="quick-facts">
+        {% for f in r.quick_facts %}
+        <div class="fact-card hover-glass reveal" style="--delay: {{ loop.index0 * 80 }}ms">
+          <p class="fact-value">{{ f.value }}</p>
+          <p class="fact-label">{{ f.label }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
 
-    mailto = f"mailto:{OWNER_EMAIL}?subject={quote(subject)}&body={quote(body)}"
-    gmail_url = (
-        "https://mail.google.com/mail/?view=cm&fs=1"
-        f"&to={quote(OWNER_EMAIL)}&su={quote(subject)}&body={quote(body)}"
-    )
+  <!-- ============================================================ SKILLS -->
+  <section id="skills" class="section section-dark reveal">
+    <div class="section-inner">
+      <p class="eyebrow eyebrow-light">— Skills</p>
+      <h2 class="section-title light">What I work with</h2>
 
-    return jsonify({"ok": True, "mailto": mailto, "gmail_url": gmail_url})
+      <div class="skill-table">
+        {% for group in r.skills %}
+        <div class="skill-row reveal" style="--delay: {{ loop.index0 * 60 }}ms">
+          <div class="skill-key">{{ group.key }}</div>
+          <div class="skill-values">
+            {% for v in group.entries %}
+            <span class="tag hover-glass">{% if v.icon %}<i class="{{ v.icon }}{{ ' icon-invert' if v.invert else '' }}"></i>{% endif %}{{ v.name }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
 
+  <!-- ============================================================ EXPERIENCE -->
+  <section id="experience" class="section reveal">
+    <div class="section-inner">
+      <p class="eyebrow">— Experience</p>
+      <h2 class="section-title">Where I've worked</h2>
 
-if __name__ == "__main__":
-    app.run(debug=True)
+      <ol class="timeline">
+        {% for job in r.experience %}
+        <li class="timeline-item reveal" style="--delay: {{ loop.index0 * 90 }}ms">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <p class="timeline-date">{{ job.date }}</p>
+            <h3>{{ job.role }}{% if job.badge %} <span class="badge">{{ job.badge }}</span>{% endif %}</h3>
+            <p class="timeline-org">{{ job.org }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
+
+      <h3 class="subsection-title">Education</h3>
+      <div class="edu-grid">
+        {% for edu in r.education %}
+        <div class="edu-card reveal" style="--delay: {{ loop.index0 * 80 }}ms">
+          <p class="edu-degree">{{ edu.degree }}</p>
+          <p class="edu-school">{{ edu.school }}</p>
+          <p class="edu-meta">{{ edu.date }} <span class="dot">·</span> {{ edu.meta }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ PROJECTS -->
+  <section id="projects" class="section section-dark reveal">
+    <div class="section-inner">
+      <p class="eyebrow eyebrow-light">— Projects</p>
+      <h2 class="section-title light">Things I've built</h2>
+
+      <div class="project-grid">
+        {% for p in r.projects %}
+        <article class="project-card hover-glass reveal" style="--delay: {{ loop.index0 * 80 }}ms">
+          <p class="project-index">{{ p.index }}</p>
+          <h3>{{ p.title }}</h3>
+          <p>{{ p.description }}</p>
+          <div class="tag-row">
+            {% for t in p.tags %}<span class="tag tag-dark">{{ t }}</span>{% endfor %}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ ACHIEVEMENTS / CERTS -->
+  <section id="achievements" class="section reveal">
+    <div class="section-inner two-col">
+      <div>
+        <p class="eyebrow">— Certifications</p>
+        <h2 class="section-title small">Certified in</h2>
+        <ul class="chip-list">
+          {% for c in r.certifications %}<li class="reveal" style="--delay: {{ loop.index0 * 50 }}ms">{{ c }}</li>{% endfor %}
+        </ul>
+      </div>
+      <div>
+        <p class="eyebrow">— Achievements</p>
+        <h2 class="section-title small">Highlights</h2>
+        <ul class="check-list">
+          {% for a in r.achievements %}<li class="reveal" style="--delay: {{ loop.index0 * 50 }}ms">{{ a }}</li>{% endfor %}
+        </ul>
+        <h3 class="subsection-title small">Leadership</h3>
+        <ul class="check-list">
+          {% for l in r.leadership %}<li class="reveal" style="--delay: {{ loop.index0 * 50 }}ms">{{ l }}</li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ CONNECT -->
+  <section id="connect" class="section section-dark reveal">
+    <div class="section-inner">
+      <p class="eyebrow eyebrow-light">— Connect</p>
+      <h2 class="section-title light">Find me around the web</h2>
+      <div class="connect-grid">
+        <a href="{{ r.socials.github }}" target="_blank" rel="noopener" class="connect-card hover-glass">
+          <div class="connect-icon connect-icon-github"><i class="fa-brands fa-github"></i></div>
+          <div>
+            <p class="connect-name">GitHub</p>
+            <p class="connect-handle">chinni-123-157</p>
+          </div>
+          <span class="connect-arrow">↗</span>
+        </a>
+        <a href="{{ r.socials.linkedin }}" target="_blank" rel="noopener" class="connect-card hover-glass">
+          <div class="connect-icon connect-icon-linkedin"><i class="fa-brands fa-linkedin-in"></i></div>
+          <div>
+            <p class="connect-name">LinkedIn</p>
+            <p class="connect-handle">Mandapaka Chinni Durga Vara Prasad</p>
+          </div>
+          <span class="connect-arrow">↗</span>
+        </a>
+        <a href="{{ r.socials.leetcode }}" target="_blank" rel="noopener" class="connect-card hover-glass">
+          <div class="connect-icon connect-icon-leetcode"><i class="fa-brands fa-square-full" style="display:none"></i><i class="fa-solid fa-code"></i></div>
+          <div>
+            <p class="connect-name">LeetCode</p>
+            <p class="connect-handle">__Chinni__</p>
+          </div>
+          <span class="connect-arrow">↗</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ CONTACT -->
+  <section id="contact" class="section section-dark contact-section reveal">
+    <div class="section-inner">
+      <p class="eyebrow eyebrow-light">— Contact</p>
+      <h2 class="section-title light">Let's build something elite.</h2>
+      <p class="contact-lede">
+        Full-time role, freelance project, or just want to talk AI/ML and data —
+        fill this in. It's prepared by the server and opens Gmail's compose
+        window right in a new browser tab, addressed and pre-filled — nothing
+        is stored or sent automatically, you still hit send yourself.
+      </p>
+
+      <div class="contact-grid">
+        <form id="contactForm" class="contact-form" novalidate>
+          <div class="field">
+            <label for="fromName">Your name</label>
+            <input type="text" id="fromName" name="name" required autocomplete="name" placeholder="Jane Doe">
+            <span class="field-error" id="err-name"></span>
+          </div>
+          <div class="field">
+            <label for="fromEmail">Your email</label>
+            <input type="email" id="fromEmail" name="email" required autocomplete="email" placeholder="jane@company.com">
+            <span class="field-error" id="err-email"></span>
+          </div>
+          <div class="field field-full">
+            <label for="roleType">What's this about</label>
+            <div class="role-pills" id="rolePills" role="radiogroup" aria-label="What's this about">
+              {% for role in r.contact_roles %}
+              <button type="button" class="role-pill{{ ' is-selected' if loop.first else '' }}" data-value="{{ role }}" role="radio" aria-checked="{{ 'true' if loop.first else 'false' }}">{{ role }}</button>
+              {% endfor %}
+            </div>
+            <input type="hidden" id="roleType" name="role" value="{{ r.contact_roles[0] }}">
+            <span class="field-error" id="err-role"></span>
+          </div>
+          <div class="field">
+            <label for="project">Project / request <span class="optional">(optional)</span></label>
+            <input type="text" id="project" name="project" placeholder="e.g. Data pipeline for e-commerce orders">
+          </div>
+          <div class="field">
+            <label for="timeline">Timeline <span class="optional">(optional)</span></label>
+            <input type="text" id="timeline" name="timeline" placeholder="e.g. Start in 2 weeks, 1 month">
+          </div>
+          <div class="field field-full">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" required placeholder="Tell me a bit about the role, project, or what you'd like to know."></textarea>
+            <span class="field-error" id="err-message"></span>
+          </div>
+          <div class="field field-full">
+            <button type="submit" class="btn btn-accent btn-wide btn-lg" id="sendBtn">
+              <span id="sendBtnLabel">Open in Gmail ↗</span>
+            </button>
+            <p class="form-hint" id="formHint" role="status" aria-live="polite">
+              Prepared server-side, then opened in Gmail in a new browser tab, addressed to {{ r.email }}.
+            </p>
+          </div>
+        </form>
+
+        <div class="contact-direct">
+          <p class="direct-label">Prefer to reach out directly?</p>
+          <a class="direct-line" href="mailto:{{ r.email }}">{{ r.email }}</a>
+          <a class="direct-line" href="tel:+{{ r.phone_digits }}">{{ r.phone }}</a>
+
+          <p class="direct-label direct-label-spaced">Contact me via</p>
+          <div class="quick-contact">
+            <a href="{{ r.gmail_quick_url }}" target="_blank" rel="noopener" class="quick-icon quick-icon-gmail" title="Email via Gmail">
+              <i class="fa-brands fa-google"></i>
+              <span>Gmail</span>
+            </a>
+            <a href="{{ r.whatsapp_url }}" target="_blank" rel="noopener" class="quick-icon quick-icon-whatsapp" title="Chat on WhatsApp">
+              <i class="fa-brands fa-whatsapp"></i>
+              <span>WhatsApp</span>
+            </a>
+            <a href="tel:+{{ r.phone_digits }}" class="quick-icon quick-icon-call" title="Call me">
+              <i class="fa-solid fa-phone"></i>
+              <span>Call</span>
+            </a>
+          </div>
+
+          <div class="direct-socials">
+            <a href="{{ r.socials.github }}" target="_blank" rel="noopener" title="GitHub">GitHub</a>
+            <a href="{{ r.socials.linkedin }}" target="_blank" rel="noopener" title="LinkedIn">LinkedIn</a>
+            <a href="{{ r.socials.leetcode }}" target="_blank" rel="noopener" title="LeetCode">LeetCode</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>© <span id="year"></span> {{ r.name }}. Built with Flask, Three.js &amp; plain CSS/JS.</p>
+</footer>
+
+<script type="module" src="{{ url_for('static', filename='js/scene.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/naruto-fx.js') }}"></script>
+</body>
+</html>
